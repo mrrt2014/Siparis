@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sipariş Sistemi</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue, set, remove, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // ⚠️ KENDİ FİREBASE CONFIG'İNİ BURAYA YAZ
+  const firebaseConfig = {
+    apiKey: "AIzaSyDRai2eKXkxB0eVh1yMtXySrD0g3fuTzDg",
+    authDomain: "hdlejd.firebaseapp.com",
+    databaseURL: "https://hdlejd-default-rtdb.firebaseio.com",
+    projectId: "hdlejd",
+    storageBucket: "hdlejd.firebasestorage.app",
+    messagingSenderId: "705536361884",
+    appId: "1:705536361884:web:5a820b75548d53d7743459",
+    measurementId: "G-K2T1M10FYW"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  window._db = db;
+  window._ref = ref;
+  window._push = push;
+  window._onValue = onValue;
+  window._set = set;
+  window._remove = remove;
+  window._update = update;
+  window._firebaseReady = true;
+  window.dispatchEvent(new Event('firebaseReady'));
+</script>
+
+<style>
+  :root {
+    --red: #E4003A;
+    --blue: #0AB9E6;
+    --yellow: #FFD700;
+    --green: #00C853;
+    --dark: #1a1a2e;
+    --darker: #0d0d1a;
+    --card-bg: #16213e;
+    --text: #f0f0f0;
+    --muted: #8888aa;
+    --radius: 20px;
+    --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--darker);
+    color: var(--text);
+    min-height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ═══════════════════════════════
+     SCREENS
+  ═══════════════════════════════ */
+  .screen { display:none; width:100%; height:100vh; position:absolute; top:0; left:0; }
+  .screen.active { display:flex; }
+
+  /* ═══════════════════════════════
+     LOGIN SCREEN
+  ═══════════════════════════════ */
+  #screen-login {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at 50% 30%, #1a1a4e 0%, var(--darker) 70%);
+    gap: 40px;
+  }
+
+  .login-logo {
+    font-family: 'Fredoka One', cursive;
+    font-size: 3.5rem;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--blue), var(--red));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    filter: drop-shadow(0 0 20px rgba(10,185,230,0.4));
+    animation: pulse-logo 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-logo {
+    0%,100% { filter: drop-shadow(0 0 20px rgba(10,185,230,0.4)); }
+    50% { filter: drop-shadow(0 0 40px rgba(228,0,58,0.6)); }
+  }
+
+  .login-subtitle {
+    font-size: 0.9rem;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: -30px;
+  }
+
+  .login-box {
+    background: var(--card-bg);
+    border: 2px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius);
+    padding: 40px 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    box-shadow: var(--shadow);
+    min-width: 280px;
+  }
+
+  .login-label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .login-input {
+    width: 80px;
+    height: 80px;
+    background: var(--darker);
+    border: 3px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 2.8rem;
+    color: var(--text);
+    text-align: center;
+    outline: none;
+    transition: all 0.2s;
+  }
+  .login-input:focus { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(10,185,230,0.2); }
+
+  .login-btn {
+    background: linear-gradient(135deg, var(--blue), #0070cc);
+    color: #fff;
+    border: none;
+    padding: 14px 40px;
+    border-radius: 50px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(10,185,230,0.4);
+  }
+  .login-btn:active { transform: scale(0.96); }
+
+  .login-hint {
+    display: flex;
+    gap: 20px;
+    margin-top: -10px;
+  }
+  .hint-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 50px;
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .hint-chip span { font-weight: 800; color: var(--text); }
+
+  /* ═══════════════════════════════
+     NINTENDO MENU SCREEN
+  ═══════════════════════════════ */
+  #screen-menu {
+    flex-direction: column;
+    background: var(--dark);
+    overflow: hidden;
+  }
+
+  .menu-header {
+    padding: 16px 20px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--darker);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+  }
+
+  .menu-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.4rem;
+    color: var(--blue);
+  }
+
+  .cart-btn {
+    position: relative;
+    background: var(--card-bg);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 50px;
+    padding: 8px 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    color: var(--text);
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .cart-btn:active { transform: scale(0.95); background: var(--blue); }
+  .cart-count {
+    background: var(--red);
+    color: #fff;
+    border-radius: 50%;
+    width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 900;
+  }
+
+  /* Scrollable product grid */
+  .menu-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  .menu-scroll::-webkit-scrollbar { display: none; }
+
+  .menu-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    padding-bottom: 20px;
+  }
+
+  .product-card {
+    background: var(--card-bg);
+    border: 2px solid rgba(255,255,255,0.07);
+    border-radius: var(--radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.18s;
+    scroll-snap-align: start;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .product-card:active { transform: scale(0.95); border-color: var(--blue); }
+
+  .product-img-wrap {
+    width: 100%;
+    aspect-ratio: 1;
+    background: linear-gradient(135deg, #1e2a4a, #2a1e4a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .product-img-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+  .product-img-wrap .no-img {
+    font-size: 3rem;
+    opacity: 0.3;
+  }
+
+  .product-info {
+    padding: 6px 8px 8px;
+  }
+  .product-name {
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.3;
+    margin-bottom: 6px;
+  }
+  .product-price {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    color: var(--yellow);
+  }
+
+  .add-badge {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 30px; height: 30px;
+    background: var(--blue);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 900;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.2s;
+  }
+  .product-card.in-cart .add-badge { opacity: 1; transform: scale(1); }
+
+  /* Cart Panel */
+  .cart-panel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--card-bg);
+    border-top: 3px solid var(--blue);
+    border-radius: 24px 24px 0 0;
+    padding: 20px;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.34,1.4,0.64,1);
+    z-index: 100;
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .cart-panel.open { transform: translateY(0); }
+
+  .cart-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .cart-panel-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.3rem;
+    color: var(--blue);
+  }
+  .close-cart {
+    background: rgba(255,255,255,0.08);
+    border: none;
+    border-radius: 50%;
+    width: 32px; height: 32px;
+    color: var(--text);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .cart-items { overflow-y: auto; flex: 1; }
+
+  .cart-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .cart-item-img {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: var(--darker);
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+  }
+  .cart-item-img img { width:100%; height:100%; object-fit:cover; }
+  .cart-item-name { flex: 1; font-weight: 700; font-size: 0.9rem; }
+  .cart-item-qty {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .qty-btn {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: var(--darker);
+    color: var(--text);
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800;
+    transition: all 0.15s;
+  }
+  .qty-btn:active { background: var(--blue); border-color: var(--blue); }
+  .qty-num { font-weight: 800; min-width: 20px; text-align: center; }
+
+  .table-input-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .table-label { font-size: 0.8rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .table-input {
+    background: var(--darker);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .table-input:focus { border-color: var(--blue); }
+
+  .send-order-btn {
+    background: linear-gradient(135deg, var(--green), #00a844);
+    color: #fff;
+    border: none;
+    padding: 16px;
+    border-radius: 14px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 900;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(0,200,83,0.4);
+    text-transform: uppercase;
+  }
+  .send-order-btn:active { transform: scale(0.97); }
+  .send-order-btn:disabled { opacity: 0.5; }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 99;
+    display: none;
+  }
+  .overlay.active { display: block; }
+
+  /* ═══════════════════════════════
+     ADMIN SCREEN
+  ═══════════════════════════════ */
+  #screen-admin {
+    flex-direction: column;
+    background: var(--darker);
+    overflow: hidden;
+  }
+
+  .admin-header {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card-bg);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    flex-shrink: 0;
+  }
+
+  .admin-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.3rem;
+    color: var(--yellow);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .live-dot {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: blink 1.2s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  .add-product-btn {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--blue), #0070cc);
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(10,185,230,0.5);
+    transition: all 0.2s;
+  }
+  .add-product-btn:active { transform: scale(0.9); }
+
+  .admin-tabs {
+    display: flex;
+    padding: 12px 20px 0;
+    gap: 8px;
+    flex-shrink: 0;
+    background: var(--card-bg);
+  }
+  .admin-tab {
+    padding: 8px 20px;
+    border-radius: 50px 50px 0 0;
+    border: none;
+    background: rgba(255,255,255,0.05);
+    color: var(--muted);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .admin-tab.active {
+    background: var(--darker);
+    color: var(--text);
+  }
+  .admin-tab .tab-badge {
+    background: var(--red);
+    color: #fff;
+    border-radius: 50%;
+    width: 18px; height: 18px;
+    font-size: 0.65rem;
+    font-weight: 900;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .admin-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+  }
+  .admin-content::-webkit-scrollbar { display: none; }
+
+  /* Orders list */
+  .order-card {
+    background: var(--card-bg);
+    border: 2px solid rgba(255,255,255,0.07);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    overflow: hidden;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .order-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .order-table {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    color: var(--blue);
+  }
+  .order-time { font-size: 0.75rem; color: var(--muted); }
+  .order-status {
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .status-new { background: rgba(228,0,58,0.2); color: var(--red); border: 1px solid var(--red); }
+  .status-done { background: rgba(0,200,83,0.15); color: var(--green); border: 1px solid var(--green); }
+
+  .order-items-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .order-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.72rem;
+  }
+  .order-item-name { color: var(--text); font-weight: 600; }
+  .order-item-qty {
+    background: rgba(255,255,255,0.08);
+    border-radius: 50px;
+    padding: 2px 10px;
+    font-weight: 800;
+    font-size: 0.8rem;
+    color: var(--yellow);
+  }
+
+  .order-actions {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px 14px;
+  }
+  .order-action-btn {
+    flex: 1;
+    padding: 8px;
+    border-radius: 10px;
+    border: none;
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .order-action-btn:active { transform: scale(0.95); }
+  .btn-done { background: rgba(0,200,83,0.2); color: var(--green); border: 1px solid rgba(0,200,83,0.3); }
+  .btn-delete { background: rgba(228,0,58,0.15); color: var(--red); border: 1px solid rgba(228,0,58,0.2); }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* Admin products tab */
+  .admin-product-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+  .admin-product-card {
+    background: var(--card-bg);
+    border: 2px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+  .admin-product-card img,
+  .admin-product-card .no-img-admin {
+    width: 100%; aspect-ratio: 1;
+    object-fit: cover;
+    background: linear-gradient(135deg, #1e2a4a, #2a1e4a);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem;
+    color: rgba(255,255,255,0.15);
+  }
+  .admin-product-info { padding: 8px 10px 10px; }
+  .admin-product-name { font-weight: 800; font-size: 0.85rem; margin-bottom: 2px; }
+  .admin-product-price { font-size: 0.8rem; color: var(--yellow); font-weight: 700; }
+  .admin-product-del {
+    position: absolute;
+    top: 6px; right: 6px;
+    width: 26px; height: 26px;
+    background: rgba(228,0,58,0.85);
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ═══════════════════════════════
+     MODAL - Add Product
+  ═══════════════════════════════ */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--card-bg);
+    border-radius: 24px 24px 0 0;
+    padding: 24px 20px 32px;
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: slideUp 0.3s cubic-bezier(0.34,1.4,0.64,1);
+  }
+  @keyframes slideUp {
+    from { transform: translateY(60px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.3rem;
+    color: var(--blue);
+  }
+
+  .modal-img-picker {
+    width: 100%;
+    aspect-ratio: 2.5;
+    background: var(--darker);
+    border: 2px dashed rgba(255,255,255,0.15);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.2s;
+    position: relative;
+  }
+  .modal-img-picker:active { border-color: var(--blue); }
+  .modal-img-picker img { width:100%; height:100%; object-fit:cover; }
+  .modal-img-picker .picker-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .modal-img-picker .picker-label span { font-size: 2rem; }
+  #img-file-input { display: none; }
+
+  .modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .modal-field label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .modal-field input {
+    background: var(--darker);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .modal-field input:focus { border-color: var(--blue); }
+
+  .modal-actions { display: flex; gap: 10px; margin-top: 4px; }
+  .modal-cancel {
+    flex: 1; padding: 13px;
+    background: rgba(255,255,255,0.06);
+    border: none; border-radius: 12px;
+    color: var(--muted);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  .modal-save {
+    flex: 2; padding: 13px;
+    background: linear-gradient(135deg, var(--blue), #0070cc);
+    border: none; border-radius: 12px;
+    color: #fff;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(10,185,230,0.4);
+  }
+  .modal-save:active { transform: scale(0.97); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--card-bg);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 50px;
+    padding: 12px 24px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    z-index: 999;
+    transition: transform 0.35s cubic-bezier(0.34,1.4,0.64,1);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.green { border-color: var(--green); color: var(--green); }
+  .toast.red { border-color: var(--red); color: var(--red); }
+  .toast.blue { border-color: var(--blue); color: var(--blue); }
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══ -->
+<div class="screen active" id="screen-login">
+  <div class="login-logo">🍽 SIPARIŞ</div>
+  <div class="login-subtitle">Sisteme Giriş</div>
+  <div class="login-box">
+    <div class="login-label">Mod Seç</div>
+    <input class="login-input" id="login-input" type="tel" maxlength="1" placeholder="?" autocomplete="off">
+    <button class="login-btn" onclick="doLogin()">GİRİŞ →</button>
+    <div class="login-hint">
+      <div class="hint-chip"><span>0</span> Müşteri</div>
+      <div class="hint-chip"><span>1</span> Yönetici</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MENU (Nintendo Style) ═══ -->
+<div class="screen" id="screen-menu">
+  <div class="menu-header">
+    <div class="menu-title">🎮 Menü</div>
+    <button class="cart-btn" onclick="toggleCart()">
+      🛒 Sepet
+      <span class="cart-count" id="cart-count">0</span>
+    </button>
+  </div>
+  <div class="menu-scroll">
+    <div class="menu-grid" id="menu-grid">
+      <!-- Products loaded here -->
+    </div>
+  </div>
+</div>
+
+<!-- Cart Overlay -->
+<div class="overlay" id="cart-overlay" onclick="toggleCart()"></div>
+
+<!-- Cart Panel -->
+<div class="cart-panel" id="cart-panel">
+  <div class="cart-panel-header">
+    <div class="cart-panel-title">🛒 Sepetim</div>
+    <button class="close-cart" onclick="toggleCart()">✕</button>
+  </div>
+  <div class="cart-items" id="cart-items-list"></div>
+  <div class="table-input-wrap">
+    <div class="table-label">Masa / İsim</div>
+    <input class="table-input" id="table-input" placeholder="Masa 3 veya Ahmet..." type="text">
+  </div>
+  <button class="send-order-btn" id="send-btn" onclick="sendOrder()">✅ Sipariş Ver</button>
+</div>
+
+<!-- ═══ ADMIN ═══ -->
+<div class="screen" id="screen-admin">
+  <div class="admin-header">
+    <div class="admin-title">
+      <div class="live-dot"></div>
+      Yönetici Paneli
+    </div>
+    <button class="add-product-btn" onclick="openAddModal()" title="Ürün Ekle">＋</button>
+  </div>
+  <div class="admin-tabs">
+    <button class="admin-tab active" id="tab-orders" onclick="switchTab('orders')">
+      Siparişler <span class="tab-badge" id="orders-badge">0</span>
+    </button>
+    <button class="admin-tab" id="tab-products" onclick="switchTab('products')">Ürünler</button>
+  </div>
+  <div class="admin-content" id="admin-content">
+    <!-- dynamic -->
+  </div>
+</div>
+
+<!-- ═══ ADD PRODUCT MODAL ═══ -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Yeni Ürün Ekle</div>
+    <div class="modal-img-picker" id="img-picker" onclick="document.getElementById('img-file-input').click()">
+      <div class="picker-label" id="picker-label"><span>📷</span>Fotoğraf Ekle</div>
+      <img id="modal-img-preview" style="display:none">
+    </div>
+    <input type="file" id="img-file-input" accept="image/*" onchange="handleImgSelect(this)">
+    <div class="modal-field">
+      <label>Ürün Adı</label>
+      <input type="text" id="modal-name" placeholder="örn. Margherita Pizza">
+    </div>
+    <div class="modal-field">
+      <label>Fiyat (opsiyonel)</label>
+      <input type="text" id="modal-price" placeholder="örn. 120₺">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeAddModal()">İptal</button>
+      <button class="modal-save" onclick="saveProduct()">Kaydet ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══ STATE ═══
+let cart = {};
+let products = {};
+let orders = {};
+let currentTab = 'orders';
+let selectedImgBase64 = null;
+let db, dbRef, dbPush, dbOnValue, dbSet, dbRemove, dbUpdate;
+
+// ═══ FIREBASE INIT ═══
+function initFirebase() {
+  db = window._db;
+  dbRef = window._ref;
+  dbPush = window._push;
+  dbOnValue = window._onValue;
+  dbSet = window._set;
+  dbRemove = window._remove;
+  dbUpdate = window._update;
+
+  // Listen for products
+  dbOnValue(dbRef(db, 'products'), snap => {
+    products = snap.val() || {};
+    renderMenu();
+    if (currentTab === 'products') renderAdminProducts();
+  });
+
+  // Listen for orders
+  dbOnValue(dbRef(db, 'orders'), snap => {
+    orders = snap.val() || {};
+    updateOrdersBadge();
+    if (currentTab === 'orders') renderAdminOrders();
+  });
+}
+
+// ═══ LOGIN ═══
+function doLogin() {
+  const val = document.getElementById('login-input').value.trim();
+  if (val === '0') showScreen('screen-menu');
+  else if (val === '1') showScreen('screen-admin');
+  else showToast('0 veya 1 gir!', 'red');
+}
+
+document.getElementById('login-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ═══ MENU RENDER ═══
+function renderMenu() {
+  const grid = document.getElementById('menu-grid');
+  const keys = Object.keys(products);
+  if (!keys.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)"><div style="font-size:2.5rem;margin-bottom:10px">🍽️</div><p>Menü henüz boş</p></div>';
+    return;
+  }
+  grid.innerHTML = keys.map(id => {
+    const p = products[id];
+    const inCart = cart[id] && cart[id].qty > 0;
+    return `
+      <div class="product-card ${inCart ? 'in-cart' : ''}" id="card-${id}" onclick="addToCart('${id}')">
+        <div class="product-img-wrap">
+          ${p.img ? `<img src="${p.img}" alt="${p.name}">` : `<div class="no-img">🍽️</div>`}
+          <div class="add-badge">✓</div>
+        </div>
+        <div class="product-info">
+          <div class="product-name">${p.name}</div>
+          ${p.price ? `<div class="product-price">${p.price}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ═══ CART ═══
+function addToCart(id) {
+  const p = products[id];
+  if (!cart[id]) cart[id] = { ...p, qty: 0 };
+  cart[id].qty++;
+  updateCartBadge();
+  renderMenu();
+  showToast(`${p.name} eklendi 🛒`, 'blue');
+}
+
+function updateCartBadge() {
+  const total = Object.values(cart).reduce((a, i) => a + i.qty, 0);
+  document.getElementById('cart-count').textContent = total;
+}
+
+function toggleCart() {
+  const panel = document.getElementById('cart-panel');
+  const overlay = document.getElementById('cart-overlay');
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open');
+  overlay.classList.toggle('active');
+  if (!isOpen) renderCartItems();
+}
+
+function renderCartItems() {
+  const list = document.getElementById('cart-items-list');
+  const items = Object.entries(cart).filter(([,v]) => v.qty > 0);
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🛒</div><p>Sepet boş</p></div>';
+    return;
+  }
+  list.innerHTML = items.map(([id, item]) => `
+    <div class="cart-item">
+      <div class="cart-item-img">
+        ${item.img ? `<img src="${item.img}">` : '🍽️'}
+      </div>
+      <div class="cart-item-name">${item.name}</div>
+      <div class="cart-item-qty">
+        <button class="qty-btn" onclick="changeQty('${id}',-1)">−</button>
+        <span class="qty-num">${item.qty}</span>
+        <button class="qty-btn" onclick="changeQty('${id}',1)">＋</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function changeQty(id, delta) {
+  if (!cart[id]) return;
+  cart[id].qty = Math.max(0, cart[id].qty + delta);
+  if (cart[id].qty === 0) delete cart[id];
+  updateCartBadge();
+  renderCartItems();
+  renderMenu();
+}
+
+async function sendOrder() {
+  const tableVal = document.getElementById('table-input').value.trim();
+  const items = Object.entries(cart).filter(([,v]) => v.qty > 0);
+  if (!items.length) { showToast('Sepet boş!', 'red'); return; }
+  if (!tableVal) { showToast('Masa / İsim gir!', 'red'); return; }
+
+  if (!window._firebaseReady) { showToast('Bağlantı bekleniyor...', 'red'); return; }
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true;
+
+  const orderData = {
+    table: tableVal,
+    items: items.map(([id, v]) => ({ id, name: v.name, qty: v.qty })),
+    time: new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}),
+    status: 'new'
+  };
+
+  try {
+    await dbPush(dbRef(db, 'orders'), orderData);
+    cart = {};
+    updateCartBadge();
+    toggleCart();
+    renderMenu();
+    showToast('Sipariş verildi! ✅', 'green');
+    document.getElementById('table-input').value = '';
+  } catch (e) {
+    showToast('Hata: ' + e.message, 'red');
+  }
+  btn.disabled = false;
+}
+
+// ═══ ADMIN ═══
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-orders').classList.toggle('active', tab === 'orders');
+  document.getElementById('tab-products').classList.toggle('active', tab === 'products');
+  if (tab === 'orders') renderAdminOrders();
+  else renderAdminProducts();
+}
+
+function updateOrdersBadge() {
+  const newCount = Object.values(orders).filter(o => o.status === 'new').length;
+  document.getElementById('orders-badge').textContent = newCount;
+}
+
+function renderAdminOrders() {
+  const content = document.getElementById('admin-content');
+  const entries = Object.entries(orders).reverse();
+  if (!entries.length) {
+    content.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>Henüz sipariş yok</p></div>';
+    return;
+  }
+  content.innerHTML = entries.map(([id, o]) => `
+    <div class="order-card">
+      <div class="order-header">
+        <div>
+          <div class="order-table">🪑 ${o.table}</div>
+          <div class="order-time">${o.time || ''}</div>
+        </div>
+        <div class="order-status ${o.status === 'done' ? 'status-done' : 'status-new'}">
+          ${o.status === 'done' ? '✓ Hazır' : '⏳ Yeni'}
+        </div>
+      </div>
+      <div class="order-items-list">
+        ${(o.items || []).map(i => `
+          <div class="order-item-row">
+            <span class="order-item-name">${i.name}</span>
+            <span class="order-item-qty">×${i.qty}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="order-actions">
+        <button class="order-action-btn btn-done" onclick="markDone('${id}')">✅ Hazır</button>
+        <button class="order-action-btn btn-delete" onclick="deleteOrder('${id}')">🗑 Sil</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function markDone(id) {
+  await dbUpdate(dbRef(db, `orders/${id}`), { status: 'done' });
+  showToast('Sipariş hazırlandı ✅', 'green');
+}
+
+async function deleteOrder(id) {
+  await dbRemove(dbRef(db, `orders/${id}`));
+  showToast('Sipariş silindi', 'red');
+}
+
+function renderAdminProducts() {
+  const content = document.getElementById('admin-content');
+  const entries = Object.entries(products);
+  if (!entries.length) {
+    content.innerHTML = '<div class="empty-state"><div class="empty-icon">🍽️</div><p>Henüz ürün yok</p><p style="margin-top:8px;font-size:0.8rem">Sağ üstteki + ile ekle</p></div>';
+    return;
+  }
+  content.innerHTML = `<div class="admin-product-grid">` + entries.map(([id, p]) => `
+    <div class="admin-product-card">
+      ${p.img
+        ? `<img src="${p.img}" alt="${p.name}">`
+        : `<div class="no-img-admin" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:2.5rem;background:linear-gradient(135deg,#1e2a4a,#2a1e4a)">🍽️</div>`
+      }
+      <div class="admin-product-info">
+        <div class="admin-product-name">${p.name}</div>
+        ${p.price ? `<div class="admin-product-price">${p.price}</div>` : ''}
+      </div>
+      <button class="admin-product-del" onclick="deleteProduct('${id}')">✕</button>
+    </div>
+  `).join('') + `</div>`;
+}
+
+async function deleteProduct(id) {
+  await dbRemove(dbRef(db, `products/${id}`));
+  showToast('Ürün silindi', 'red');
+}
+
+// ═══ ADD PRODUCT MODAL ═══
+function openAddModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+  selectedImgBase64 = null;
+  document.getElementById('modal-img-preview').style.display = 'none';
+  document.getElementById('picker-label').style.display = 'flex';
+  document.getElementById('modal-name').value = '';
+  document.getElementById('modal-price').value = '';
+}
+
+function closeAddModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function handleImgSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    selectedImgBase64 = e.target.result;
+    const preview = document.getElementById('modal-img-preview');
+    preview.src = selectedImgBase64;
+    preview.style.display = 'block';
+    document.getElementById('picker-label').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveProduct() {
+  const name = document.getElementById('modal-name').value.trim();
+  const price = document.getElementById('modal-price').value.trim();
+  if (!name) { showToast('Ürün adı gir!', 'red'); return; }
+  if (!window._firebaseReady) { showToast('Bağlantı bekleniyor...', 'red'); return; }
+
+  const data = { name };
+  if (price) data.price = price;
+  if (selectedImgBase64) data.img = selectedImgBase64;
+
+  try {
+    await dbPush(dbRef(db, 'products'), data);
+    closeAddModal();
+    showToast(`${name} eklendi! ✅`, 'green');
+  } catch (e) {
+    showToast('Hata: ' + e.message, 'red');
+  }
+}
+
+// ═══ TOAST ═══
+let toastTimer;
+function showToast(msg, color = 'blue') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${color} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ═══ WAIT FOR FIREBASE ═══
+if (window._firebaseReady) {
+  initFirebase();
+} else {
+  window.addEventListener('firebaseReady', initFirebase, { once: true });
+}
+</script>
+</body>
+</html>
